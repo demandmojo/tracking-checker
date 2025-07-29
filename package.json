@@ -1,14 +1,12 @@
 {
   "name": "tracking-checker",
   "version": "1.0.0",
-  "description": "Check for GTM, GA4, and Meta Pixel on a webpage",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "postinstall": "echo skipped"
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "playwright": "^1.44.0"
+    "playwright": "^1.43.1"
   }
 }
