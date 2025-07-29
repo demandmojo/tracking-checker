@@ -1,44 +1,37 @@
-// index.js
-const express = require('express');
-const { chromium } = require('playwright');
+const express = require("express");
+const { chromium } = require("playwright");
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
-app.use(express.json());
-
-app.get('/check', async (req, res) => {
+app.get("/check", async (req, res) => {
   const url = req.query.url;
-  if (!url) return res.status(400).json({ error: 'Missing URL' });
+  if (!url) return res.status(400).send("Missing URL");
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch();
   const page = await browser.newPage();
-
   try {
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, { timeout: 15000 });
+
     const content = await page.content();
 
-    const hasGTM = content.includes('googletagmanager.com/gtm.js');
-    const ga4Regex = /G-[A-Z0-9]{6,}/;
-    const hasGA4 = ga4Regex.test(content);
-    const hasMetaPixel = content.includes('connect.facebook.net') || content.includes('fbq(');
+    const gtm = content.includes("googletagmanager.com");
+    const ga4 = content.includes("gtag('config'");
+    const metaPixel = content.includes("connect.facebook.net");
 
     res.json({
       url,
-      tracking: {
-        googleTagManager: hasGTM,
-        googleAnalytics4: hasGA4,
-        metaPixel: hasMetaPixel
-      }
+      GTM: gtm,
+      GA4: ga4,
+      MetaPixel: metaPixel
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to check site.', details: err.message });
+  } catch (error) {
+    res.status(500).send("Error loading page");
   } finally {
     await browser.close();
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Tracking Checker API is running. Use /check?url=https://example.com');
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
-
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
