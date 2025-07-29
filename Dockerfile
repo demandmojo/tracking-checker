@@ -1,9 +1,13 @@
-FROM mcr.microsoft.com/playwright/node:lts
+FROM node:18
 
 WORKDIR /app
-COPY . .
 
+COPY package.json .
+COPY package-lock.json .
 RUN npm install
 
-EXPOSE 3000
-CMD ["node", "index.js"]
+COPY . .
+
+RUN npx playwright install --with-deps
+
+CMD ["npm", "start"]
