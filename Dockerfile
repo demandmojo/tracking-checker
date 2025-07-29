@@ -1,16 +1,14 @@
-# Use the official Node.js image
+# Use the official Playwright base image
 FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy rest of the code
+# Copy app files
 COPY . .
 
 # Expose port
