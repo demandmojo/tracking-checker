@@ -13,7 +13,7 @@ app.get('/check', async (req, res) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    await page.goto(url, { timeout: 30000 }); // 30s timeout
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
     const content = await page.content();
 
@@ -23,13 +23,24 @@ app.get('/check', async (req, res) => {
 
     await browser.close();
 
-    res.json({ gtm, ga4, meta_pixel });
-  } catch (error) {
-    console.error(error);
+    res.json({
+      url,
+      tracking: {
+        googleTagManager: gtm,
+        googleAnalytics4: ga4,
+        metaPixel: meta_pixel
+      }
+    });
+  } catch (err) {
+    console.error(err.message);
     res.status(500).json({ error: 'Failed to fetch or parse the page' });
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.get('/', (req, res) => {
+  res.send('Tracking Checker API is running. Use /check?url=https://example.com');
+});
+
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
