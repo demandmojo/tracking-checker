@@ -2,45 +2,34 @@ const express = require('express');
 const { chromium } = require('playwright');
 
 const app = express();
-const port = process.env.PORT || 10000;
-
-app.use(express.json());
+const PORT = process.env.PORT || 10000;
 
 app.get('/check', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing URL' });
 
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
   try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 15000 });
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.goto(url, { timeout: 30000 }); // 30s timeout
+
     const content = await page.content();
 
-    const hasGTM = content.includes('googletagmanager.com/gtm.js');
-    const ga4Regex = /G-[A-Z0-9]{6,}/;
-    const hasGA4 = ga4Regex.test(content);
-    const hasMetaPixel = content.includes('connect.facebook.net') || content.includes('fbq(');
+    const gtm = content.includes('www.googletagmanager.com/gtm.js');
+    const ga4 = content.includes('gtag("config"') || content.includes("gtag('config'");
+    const meta_pixel = content.includes('connect.facebook.net');
 
-    res.json({
-      url,
-      tracking: {
-        googleTagManager: hasGTM,
-        googleAnalytics4: hasGA4,
-        metaPixel: hasMetaPixel
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to check site.', details: err.message });
-  } finally {
     await browser.close();
+
+    res.json({ gtm, ga4, meta_pixel });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch or parse the page' });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Tracking Checker API is running. Use /check?url=https://example.com');
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
