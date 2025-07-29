@@ -1,46 +1,43 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('✅ Tracking Checker is live. Use /check?url=https://example.com');
-});
+app.use(express.json());
 
-app.get('/check', async (req, res) => {
-  const url = req.query.url;
+app.post('/check', async (req, res) => {
+  const { url } = req.body;
+
   if (!url) {
-    return res.status(400).json({ error: 'Missing "url" query parameter' });
+    return res.status(400).json({ error: 'Missing URL in request body.' });
   }
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-      },
-    });
-    const html = await response.text();
+    const response = await fetch(url);
+    const body = await response.text();
 
-    const hasGTM = html.includes('www.googletagmanager.com');
-    const hasGA4 = html.includes('G-');
-    const hasMeta = html.includes('connect.facebook.net');
+    const hasGTM = body.includes('googletagmanager.com/gtm.js');
+    const ga4Regex = /G-[A-Z0-9]{6,}/;
+    const hasGA4 = ga4Regex.test(body);
+    const hasMetaPixel = body.includes('connect.facebook.net') || body.includes('fbq(');
 
     res.json({
       url,
       tracking: {
         googleTagManager: hasGTM,
         googleAnalytics4: hasGA4,
-        metaPixel: hasMeta,
-      },
+        metaPixel: hasMetaPixel
+      }
     });
-  } catch (err) {
-    res.status(500).json({
-      error: 'Failed to fetch URL',
-      details: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch URL.', details: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
+app.get('/', (req, res) => {
+  res.send('Tracking Checker API is running. Use POST /check with a JSON body.');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
