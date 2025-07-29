@@ -1,13 +1,18 @@
-FROM node:18
+# Use the official Node.js image
+FROM mcr.microsoft.com/playwright:v1.44.1-jammy
 
+# Set working directory
 WORKDIR /app
 
-COPY package.json .
-COPY package-lock.json .
+# Copy package files and install dependencies
+COPY package*.json ./
 RUN npm install
 
+# Copy rest of the app
 COPY . .
 
-RUN npx playwright install --with-deps
+# Expose the port the app runs on
+EXPOSE 3000
 
-CMD ["npm", "start"]
+# Start the server
+CMD ["node", "index.js"]
