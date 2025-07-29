@@ -1,42 +1,35 @@
-import express from 'express';
-import { chromium } from 'playwright';
-
+const express = require("express");
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-app.post('/check-tags', async (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'Missing URL' });
+app.get("/", (req, res) => {
+  res.send("Server is running! Add the /check?url=example.com endpoint.");
+});
 
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+app.get("/check", async (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    return res.status(400).json({ error: "Missing ?url= parameter" });
+  }
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle' });
+    const response = await fetch(url);
+    const html = await response.text();
+    const hasGTM = html.includes("GTM-");
+    const hasGA4 = html.includes("G-");
+    const hasMetaPixel = html.includes("fbq(");
 
-    const html = await page.content();
-
-    const gtm = html.includes('gtm.js');
-    const ga4 = html.match(/G-[A-Z0-9]{6,}/);
-    const ua = html.match(/UA-\d{4,}-\d+/);
-    const adsTag = html.includes('googleadservices.com/pagead/conversion.js');
-    const metaPixel = html.includes('connect.facebook.net');
-
-    const result = {
-      gtm,
-      ga4: !!ga4,
-      ua: !!ua,
-      ads_tag: adsTag,
-      meta_pixel: metaPixel,
-      tracking_status: gtm || ga4 || ua || adsTag || metaPixel ? 'ok' : 'broken',
-    };
-
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to check site', detail: err.message });
-  } finally {
-    await browser.close();
+    res.json({
+      url,
+      gtm: hasGTM,
+      ga4: hasGA4,
+      metaPixel: hasMetaPixel,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Could not fetch URL" });
   }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
