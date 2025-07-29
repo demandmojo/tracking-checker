@@ -1,5 +1,5 @@
 # Use the official Node.js image
-FROM node:22
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
 # Set working directory
 WORKDIR /app
@@ -7,16 +7,15 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including playwright)
-RUN npm install && \
-    npx playwright install --with-deps
+# Install dependencies
+RUN npm install
 
-# Copy the rest of the code
+# Copy rest of the code
 COPY . .
 
 # Expose port
 ENV PORT=10000
 EXPOSE 10000
 
-# Start the server
+# Start server
 CMD ["node", "index.js"]
