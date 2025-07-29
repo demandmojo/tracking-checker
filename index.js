@@ -1,59 +1,44 @@
+// index.js
 const express = require('express');
-const fetch = require('node-fetch');
+const { chromium } = require('playwright');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-async function checkTracking(url) {
-  const response = await fetch(url);
-  const body = await response.text();
-
-  const hasGTM = body.includes('googletagmanager.com/gtm.js');
-  const ga4Regex = /G-[A-Z0-9]{6,}/;
-  const hasGA4 = ga4Regex.test(body);
-  const hasMetaPixel = body.includes('connect.facebook.net') || body.includes('fbq(');
-
-  return {
-    url,
-    tracking: {
-      googleTagManager: hasGTM,
-      googleAnalytics4: hasGA4,
-      metaPixel: hasMetaPixel,
-    },
-  };
-}
-
-// POST endpoint
-app.post('/check', async (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'Missing URL in request body.' });
-
-  try {
-    const result = await checkTracking(url);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch URL.', details: error.message });
-  }
-});
-
-// GET endpoint with query param
 app.get('/check', async (req, res) => {
   const url = req.query.url;
-  if (!url) return res.status(400).json({ error: 'Missing URL in query string.' });
+  if (!url) return res.status(400).json({ error: 'Missing URL' });
+
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
 
   try {
-    const result = await checkTracking(url);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch URL.', details: error.message });
+    await page.goto(url, { waitUntil: 'networkidle' });
+    const content = await page.content();
+
+    const hasGTM = content.includes('googletagmanager.com/gtm.js');
+    const ga4Regex = /G-[A-Z0-9]{6,}/;
+    const hasGA4 = ga4Regex.test(content);
+    const hasMetaPixel = content.includes('connect.facebook.net') || content.includes('fbq(');
+
+    res.json({
+      url,
+      tracking: {
+        googleTagManager: hasGTM,
+        googleAnalytics4: hasGA4,
+        metaPixel: hasMetaPixel
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to check site.', details: err.message });
+  } finally {
+    await browser.close();
   }
 });
 
 app.get('/', (req, res) => {
-  res.send('Tracking Checker API is running. Use POST or GET /check with a URL.');
+  res.send('Tracking Checker API is running. Use /check?url=https://example.com');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
